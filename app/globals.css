@@ -682,6 +682,64 @@ a {
   font-weight: 400;
 }
 
+.card-gesture-gallery {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(58px, 1fr));
+  gap: 6px;
+  margin-top: 18px;
+}
+
+.gesture-visual {
+  min-width: 0;
+  margin: 0;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.gesture-image {
+  aspect-ratio: 1;
+  background-color: #e9e2d4;
+  background-repeat: no-repeat;
+  background-size: 400% 400%;
+  filter: saturate(0.9) contrast(1.02);
+}
+
+.gesture-visual figcaption {
+  min-height: 58px;
+  padding: 9px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  border-top: 1px solid var(--line);
+}
+
+.gesture-visual figcaption span {
+  color: var(--red);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.gesture-visual figcaption strong {
+  display: -webkit-box;
+  overflow: hidden;
+  font-family: var(--serif);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.15;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.gesture-visual.compact figcaption {
+  min-height: 52px;
+  padding: 7px;
+}
+
+.gesture-visual.compact figcaption strong {
+  font-size: 11px;
+}
+
 .featured-signal {
   flex: 1;
   padding-top: 23px;
@@ -921,7 +979,12 @@ a {
   z-index: 100;
   inset: 0;
   display: flex;
+  align-items: flex-start;
   justify-content: flex-end;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
   background: rgba(15, 16, 14, 0.68);
   backdrop-filter: blur(5px);
   animation: fade-in 170ms ease both;
@@ -929,19 +992,21 @@ a {
 
 .profile-dialog {
   position: relative;
-  width: min(760px, 100%);
-  height: 100%;
+  width: min(920px, 100%);
+  min-height: 100dvh;
+  margin-left: auto;
   padding: clamp(28px, 5vw, 58px);
-  overflow-y: auto;
   background: var(--paper);
   box-shadow: -30px 0 80px rgba(0, 0, 0, 0.2);
   animation: slide-in 230ms ease both;
 }
 
 .dialog-close {
-  position: absolute;
-  top: 20px;
-  right: 22px;
+  position: sticky;
+  z-index: 4;
+  top: 18px;
+  float: right;
+  margin: -8px -4px 0 18px;
   width: 38px;
   height: 38px;
   border: 1px solid var(--line);
@@ -1034,10 +1099,19 @@ a {
 
 .signal-detail {
   display: grid;
-  grid-template-columns: 54px 1fr;
-  gap: 20px;
+  grid-template-columns: 44px minmax(190px, 230px) minmax(0, 1fr);
+  gap: 22px;
+  align-items: start;
   padding: 28px 0 32px;
   border-bottom: 1px solid var(--line);
+}
+
+.signal-detail .gesture-visual figcaption {
+  min-height: 66px;
+}
+
+.signal-detail .gesture-visual figcaption strong {
+  font-size: 15px;
 }
 
 .signal-number {
@@ -1314,8 +1388,17 @@ a {
   }
 
   .signal-detail {
-    grid-template-columns: 38px 1fr;
+    grid-template-columns: 34px minmax(0, 1fr);
     gap: 12px;
+  }
+
+  .signal-detail .gesture-visual,
+  .signal-detail > div:last-child {
+    grid-column: 2;
+  }
+
+  .signal-detail .gesture-visual {
+    width: min(100%, 320px);
   }
 
   .signal-detail dl > div {

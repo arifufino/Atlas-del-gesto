@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { channels, profiles, sources, type CharacterProfile } from "./data";
+import {
+  channels,
+  profiles,
+  sources,
+  type CharacterProfile,
+  type Signal,
+} from "./data";
 
 const seasonOptions = ["Todas", "1", "2", "3", "4", "5", "6"] as const;
 
@@ -29,6 +35,54 @@ function SeasonMarks({ seasons }: { seasons: number[] }) {
   );
 }
 
+const gestureFrames: Record<Signal["channel"], [number, number]> = {
+  Mirada: [0, 1],
+  Rostro: [2, 3],
+  Postura: [4, 5],
+  Manos: [6, 7],
+  Movimiento: [8, 9],
+  Voz: [10, 11],
+  Distancia: [12, 13],
+  Objeto: [14, 15],
+};
+
+function signalHash(value: string) {
+  return [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
+}
+
+function GesturePlate({
+  signal,
+  index,
+  compact = false,
+}: {
+  signal: Signal;
+  index: number;
+  compact?: boolean;
+}) {
+  const candidates = gestureFrames[signal.channel];
+  const frame = candidates[signalHash(signal.title) % candidates.length];
+  const column = frame % 4;
+  const row = Math.floor(frame / 4);
+
+  return (
+    <figure className={compact ? "gesture-visual compact" : "gesture-visual"}>
+      <div
+        className="gesture-image"
+        role="img"
+        aria-label={`${signal.title}. ${signal.observation}`}
+        style={{
+          backgroundImage: 'url("./gesture-atlas.png")',
+          backgroundPosition: `${column * 33.3333}% ${row * 33.3333}%`,
+        }}
+      />
+      <figcaption>
+        <span>{String(index + 1).padStart(2, "0")}</span>
+        <strong>{signal.title}</strong>
+      </figcaption>
+    </figure>
+  );
+}
+
 function ProfileDialog({
   profile,
   onClose,
@@ -44,10 +98,8 @@ function ProfileDialog({
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
     };
-    document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
     return () => {
-      document.body.style.overflow = "";
       window.removeEventListener("keydown", onKeyDown);
     };
   }, [onClose]);
@@ -97,6 +149,7 @@ function ProfileDialog({
             {profile.signals.map((signal, index) => (
               <article className="signal-detail" key={signal.title}>
                 <div className="signal-number">{String(index + 1).padStart(2, "0")}</div>
+                <GesturePlate signal={signal} index={index} />
                 <div>
                   <span className="signal-channel">{signal.channel}</span>
                   <h3>{signal.title}</h3>
@@ -405,6 +458,16 @@ export default function Home() {
                   <div className="signature">
                     <span>Firma corporal</span>
                     <strong>{profile.signature}</strong>
+                  </div>
+                  <div className="card-gesture-gallery" aria-label={`Láminas de ${profile.name}`}>
+                    {profile.signals.map((signal, signalIndex) => (
+                      <GesturePlate
+                        key={signal.title}
+                        signal={signal}
+                        index={signalIndex}
+                        compact
+                      />
+                    ))}
                   </div>
                   <div className="featured-signal">
                     <span>{featuredSignal.channel}</span>
