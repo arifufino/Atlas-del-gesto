@@ -1,0 +1,14 @@
+/node_modules/
+/.next/
+/.vinext/
+/dist/
+/pages-dist/
+/.wrangler/
+/coverage/
+/outputs/
+/work/
+.env*
+*.pem
+*.log
+.DS_Store
+next-env.d.ts
