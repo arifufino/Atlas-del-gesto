@@ -1451,6 +1451,11 @@ export const profiles: CharacterProfile[] = [
 
 export const sources = [
   {
+    label: "Archivo visual de personajes — Peaky Blinders Wiki",
+    url: "https://peaky-blinders.fandom.com/wiki/Peaky_Blinders_Wiki",
+    type: "Imágenes",
+  },
+  {
     label: "Guion del episodio 1, temporada 1 — BBC Writersroom",
     url: "https://downloads.bbc.co.uk/writersroom/scripts/Peaky-Blinders-S1-Ep1.pdf",
     type: "Guion",

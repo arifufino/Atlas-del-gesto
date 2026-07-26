@@ -34,6 +34,9 @@ test("renders the atlas and its research content", async () => {
   assert.match(html, /Thomas Shelby/i);
   assert.match(html, /Firmas corporales/i);
   assert.match(html, /Fuentes consultadas/i);
+  assert.match(html, /stills\/thomas-shelby\.jpg/i);
+  assert.match(html, /Fotograma de la serie/i);
+  assert.doesNotMatch(html, /gesture-atlas\.png/i);
   assert.doesNotMatch(html, /codex-preview|Your site is taking shape|react-loading-skeleton/i);
 });
 

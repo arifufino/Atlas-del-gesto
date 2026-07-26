@@ -1,5 +1,6 @@
 "use client";
 
+/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
 import {
   channels,
@@ -11,12 +12,55 @@ import {
 
 const seasonOptions = ["Todas", "1", "2", "3", "4", "5", "6"] as const;
 
-function initials(name: string) {
-  return name
-    .split(" ")
-    .map((part) => part[0])
-    .join("")
-    .slice(0, 2);
+const stillExtensions: Record<string, string> = {
+  "diana-mitford": "webp",
+  "duke-shelby": "png",
+};
+
+const wikiSlugs: Record<string, string> = {
+  "ada-shelby": "Ada_Thorne",
+  "chester-campbell": "Inspector_Campbell",
+  "grace-burgess": "Grace_Shelby",
+  "isaiah-jesus": "Isiah_Jesus",
+};
+
+const stillOverrides: Partial<
+  Record<string, Partial<Record<Signal["channel"], string>>>
+> = {
+  "thomas-shelby": {
+    Objeto: "./stills/thomas-smoking.jpg",
+    Movimiento: "./stills/thomas-walking.jpg",
+    Distancia: "./stills/shelby-family.jpg",
+  },
+  "arthur-shelby": {
+    Movimiento: "./stills/shelby-betting-shop.jpg",
+    Distancia: "./stills/family-meeting.jpg",
+  },
+  "john-shelby": {
+    Postura: "./stills/shelby-betting-shop.jpg",
+    Distancia: "./stills/family-meeting.jpg",
+  },
+  "polly-gray": { Distancia: "./stills/polly-ada.png" },
+  "ada-shelby": { Distancia: "./stills/polly-ada.png" },
+  "michael-gray": { Distancia: "./stills/family-meeting.jpg" },
+  "finn-shelby": { Distancia: "./stills/family-meeting.jpg" },
+  "grace-burgess": { Distancia: "./stills/thomas-grace.png" },
+  "lizzie-stark": { Distancia: "./stills/thomas-lizzie.png" },
+  "may-carleton": { Distancia: "./stills/thomas-may.jpg" },
+};
+
+function characterStill(profile: CharacterProfile) {
+  const extension = stillExtensions[profile.id] ?? "jpg";
+  return `./stills/${profile.id}.${extension}`;
+}
+
+function stillForSignal(profile: CharacterProfile, signal: Signal) {
+  return stillOverrides[profile.id]?.[signal.channel] ?? characterStill(profile);
+}
+
+function sourceForProfile(profile: CharacterProfile) {
+  const slug = wikiSlugs[profile.id] ?? profile.name.replaceAll(" ", "_");
+  return `https://peaky-blinders.fandom.com/wiki/${slug}`;
 }
 
 function SeasonMarks({ seasons }: { seasons: number[] }) {
@@ -35,54 +79,62 @@ function SeasonMarks({ seasons }: { seasons: number[] }) {
   );
 }
 
-const gestureFrames: Record<Signal["channel"], [number, number]> = {
-  Mirada: [0, 1],
-  Rostro: [2, 3],
-  Postura: [4, 5],
-  Manos: [6, 7],
-  Movimiento: [8, 9],
-  Voz: [10, 11],
-  Distancia: [12, 13],
-  Objeto: [14, 15],
-};
-
-function signalHash(value: string) {
-  return [...value].reduce((total, character) => total + character.charCodeAt(0), 0);
+function CharacterPortrait({
+  profile,
+  large = false,
+}: {
+  profile: CharacterProfile;
+  large?: boolean;
+}) {
+  return (
+    <div className={large ? "portrait real large" : "portrait real"}>
+      <img
+        src={characterStill(profile)}
+        alt={`Retrato de ${profile.name}`}
+        loading="lazy"
+        decoding="async"
+      />
+    </div>
+  );
 }
 
 function GesturePlate({
+  profile,
   signal,
   index,
   compact = false,
 }: {
+  profile: CharacterProfile;
   signal: Signal;
   index: number;
   compact?: boolean;
 }) {
-  const candidates = gestureFrames[signal.channel];
-  const frame = candidates[signalHash(signal.title) % candidates.length];
-  const column = frame % 4;
-  const row = Math.floor(frame / 4);
+  const facialChannel = signal.channel === "Mirada" || signal.channel === "Rostro";
 
   return (
     <figure className={compact ? "gesture-visual compact" : "gesture-visual"}>
-      <div
-        className="gesture-image"
-        role="img"
-        aria-label={`${signal.title}. ${signal.observation}`}
-        style={{
-          backgroundImage: 'url("./gesture-atlas.png")',
-          backgroundPosition: `${column * 33.3333}% ${row * 33.3333}%`,
-        }}
-      />
+      <div className="gesture-image">
+        <img
+          src={stillForSignal(profile, signal)}
+          alt={`${profile.name}: ${signal.title}. ${signal.observation}`}
+          loading="lazy"
+          decoding="async"
+          style={{ objectPosition: facialChannel ? "center 24%" : "center" }}
+        />
+        <span className="still-label">Fotograma de la serie</span>
+      </div>
       <figcaption>
         <span>{String(index + 1).padStart(2, "0")}</span>
         <strong>{signal.title}</strong>
+        {!compact && (
+          <a href={sourceForProfile(profile)} target="_blank" rel="noreferrer">
+            Fuente visual ↗
+          </a>
+        )}
       </figcaption>
     </figure>
   );
 }
-
 function ProfileDialog({
   profile,
   onClose,
@@ -117,9 +169,7 @@ function ProfileDialog({
           ×
         </button>
         <header className="dialog-header">
-          <div className="portrait large" style={{ "--portrait": profile.palette } as React.CSSProperties}>
-            {initials(profile.name)}
-          </div>
+          <CharacterPortrait profile={profile} large />
           <div>
             <span className="eyebrow">{profile.archetype}</span>
             <h2 id="dialog-title">{profile.name}</h2>
@@ -149,7 +199,7 @@ function ProfileDialog({
             {profile.signals.map((signal, index) => (
               <article className="signal-detail" key={signal.title}>
                 <div className="signal-number">{String(index + 1).padStart(2, "0")}</div>
-                <GesturePlate signal={signal} index={index} />
+                <GesturePlate profile={profile} signal={signal} index={index} />
                 <div>
                   <span className="signal-channel">{signal.channel}</span>
                   <h3>{signal.title}</h3>
@@ -246,17 +296,27 @@ export default function Home() {
 
   const signalCount = profiles.reduce((total, profile) => total + profile.signals.length, 0);
 
+  const scrollToSection =
+    (id: string) => (event: React.MouseEvent<HTMLAnchorElement>) => {
+      event.preventDefault();
+      setSelected(null);
+      window.requestAnimationFrame(() => {
+        document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        window.history.replaceState(null, "", `#${id}`);
+      });
+    };
+
   return (
     <main>
       <nav className="topbar" aria-label="Navegación principal">
-        <a href="#inicio" className="brand">
+        <a href="#inicio" className="brand" onClick={scrollToSection("inicio")}>
           <span className="brand-mark">AG</span>
           <span>Atlas del gesto</span>
         </a>
         <div className="nav-links">
-          <a href="#atlas">Personajes</a>
-          <a href="#metodo">Método</a>
-          <a href="#fuentes">Fuentes</a>
+          <a href="#atlas" onClick={scrollToSection("atlas")}>Personajes</a>
+          <a href="#metodo" onClick={scrollToSection("metodo")}>Método</a>
+          <a href="#fuentes" onClick={scrollToSection("fuentes")}>Fuentes</a>
         </div>
         <button className="saved-nav" onClick={() => setSavedOnly((value) => !value)}>
           <span aria-hidden="true">{savedOnly ? "★" : "☆"}</span>
@@ -278,10 +338,10 @@ export default function Home() {
             personajes de <cite>Peaky Blinders</cite>.
           </p>
           <div className="hero-actions">
-            <a className="primary-button" href="#atlas">
+            <a className="primary-button" href="#atlas" onClick={scrollToSection("atlas")}>
               Explorar el atlas <span aria-hidden="true">↓</span>
             </a>
-            <a className="text-link" href="#metodo">
+            <a className="text-link" href="#metodo" onClick={scrollToSection("metodo")}>
               Cómo leerlo
             </a>
           </div>
@@ -443,12 +503,8 @@ export default function Home() {
                     </button>
                   </div>
                   <div className="profile-identity">
-                    <div
-                      className="portrait"
-                      style={{ "--portrait": profile.palette } as React.CSSProperties}
-                    >
-                      {initials(profile.name)}
-                    </div>
+                    <CharacterPortrait profile={profile} />
+
                     <div>
                       <span>{profile.archetype}</span>
                       <h3>{profile.name}</h3>
@@ -463,6 +519,7 @@ export default function Home() {
                     {profile.signals.map((signal, signalIndex) => (
                       <GesturePlate
                         key={signal.title}
+                        profile={profile}
                         signal={signal}
                         index={signalIndex}
                         compact
@@ -545,6 +602,11 @@ export default function Home() {
             la observación.
           </p>
         </header>
+        <p className="image-credit-note">
+          Los fotogramas pertenecen a BBC / Caryn Mandabach Productions y se muestran
+          con fines de análisis editorial. El archivo visual fue consultado a través de
+          Peaky Blinders Wiki; cada lámina enlaza su ficha de procedencia.
+        </p>
         <div className="source-list">
           {sources.map((source, index) => (
             <a href={source.url} target="_blank" rel="noreferrer" key={source.url}>
@@ -563,7 +625,7 @@ export default function Home() {
           <span>Atlas del gesto</span>
         </div>
         <p>Un archivo independiente de análisis audiovisual y conducta no verbal.</p>
-        <a href="#inicio">Volver arriba ↑</a>
+        <a href="#inicio" onClick={scrollToSection("inicio")}>Volver arriba ↑</a>
       </footer>
 
       {selected && (
