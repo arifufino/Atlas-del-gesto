@@ -36,6 +36,9 @@ jobs:
       - name: Build
         run: npm run build
 
+      - name: Test
+        run: node --experimental-strip-types --test "tests/*.test.mjs"
+
       - name: Export static site
         env:
           PAGES_BASE_PATH: /${{ github.event.repository.name }}/
