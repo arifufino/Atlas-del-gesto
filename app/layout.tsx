@@ -2,11 +2,28 @@ import type { Metadata } from "next";
 import { headers } from "next/headers";
 import "./globals.css";
 
+const DEFAULT_HOST = "localhost:3000";
+const HOST_PATTERN = /^[a-z0-9.-]+(:\d{1,5})?$/i;
+
+function safeHost(value: string | null): string | null {
+  if (!value) return null;
+  const host = value.split(",")[0].trim();
+  return HOST_PATTERN.test(host) ? host : null;
+}
+
+function safeProtocol(value: string | null, host: string): "http" | "https" {
+  const protocol = value?.split(",")[0].trim().toLowerCase();
+  if (protocol === "http" || protocol === "https") return protocol;
+  return host.startsWith("localhost") ? "http" : "https";
+}
+
 export async function generateMetadata(): Promise<Metadata> {
   const headerList = await headers();
-  const host = headerList.get("x-forwarded-host") ?? headerList.get("host") ?? "localhost:3000";
-  const protocol =
-    headerList.get("x-forwarded-proto") ?? (host.startsWith("localhost") ? "http" : "https");
+  const host =
+    safeHost(headerList.get("x-forwarded-host")) ??
+    safeHost(headerList.get("host")) ??
+    DEFAULT_HOST;
+  const protocol = safeProtocol(headerList.get("x-forwarded-proto"), host);
   const origin = `${protocol}://${host}`;
   const socialImage = new URL("/og.png", origin).toString();
 
