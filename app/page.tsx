@@ -58,6 +58,34 @@ function stillForSignal(profile: CharacterProfile, signal: Signal) {
   return stillOverrides[profile.id]?.[signal.channel] ?? characterStill(profile);
 }
 
+function normalizeText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLocaleLowerCase("es");
+}
+
+const searchIndex = new Map(
+  profiles.map((profile) => [
+    profile.id,
+    normalizeText(
+      [
+        profile.name,
+        profile.role,
+        profile.archetype,
+        profile.signature,
+        profile.evolution,
+        ...profile.signals.flatMap((signal) => [
+          signal.title,
+          signal.observation,
+          signal.function,
+          signal.context,
+        ]),
+      ].join(" "),
+    ),
+  ]),
+);
+
 function sourceForProfile(profile: CharacterProfile) {
   const slug = wikiSlugs[profile.id] ?? profile.name.replaceAll(" ", "_");
   return `https://peaky-blinders.fandom.com/wiki/${slug}`;
@@ -247,7 +275,10 @@ export default function Home() {
     let storedIds: string[] = [];
     try {
       const stored = window.localStorage.getItem("atlas-gesto-saved");
-      if (stored) storedIds = JSON.parse(stored);
+      const parsed: unknown = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed)) {
+        storedIds = parsed.filter((value): value is string => typeof value === "string");
+      }
     } catch {
       storedIds = [];
     }
@@ -266,26 +297,10 @@ export default function Home() {
   };
 
   const filtered = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase("es");
+    const normalized = normalizeText(query.trim());
     return profiles.filter((profile) => {
       const matchesQuery =
-        !normalized ||
-        [
-          profile.name,
-          profile.role,
-          profile.archetype,
-          profile.signature,
-          profile.evolution,
-          ...profile.signals.flatMap((signal) => [
-            signal.title,
-            signal.observation,
-            signal.function,
-            signal.context,
-          ]),
-        ]
-          .join(" ")
-          .toLocaleLowerCase("es")
-          .includes(normalized);
+        !normalized || (searchIndex.get(profile.id) ?? "").includes(normalized);
       const matchesChannel =
         channel === "Todos" || profile.signals.some((signal) => signal.channel === channel);
       const matchesSeason = season === "Todas" || profile.seasons.includes(Number(season));

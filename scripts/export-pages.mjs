@@ -27,14 +27,21 @@ if (!response.ok) {
 }
 
 let html = await response.text();
+// A single pass so that a path is never prefixed twice. Matches root-relative
+// attribute values and the bare asset URLs embedded in the RSC payload, where
+// quotes may be escaped.
+const ROOT_RELATIVE = /(href|src|content)=(\\?")\/(?!\/)|(\\?")\/(?=assets\/)/g;
+
 html = html
-  .replaceAll('"/assets/', `"${basePath}assets/`)
-  .replaceAll('\\"/assets/', `\\"${basePath}assets/`)
-  .replaceAll('href="/', `href="${basePath}`)
-  .replaceAll('src="/', `src="${basePath}`)
-  .replaceAll('content="/', `content="${basePath}`)
+  .replace(ROOT_RELATIVE, (_match, attribute, quote, bareQuote) =>
+    attribute ? `${attribute}=${quote}${basePath}` : `${bareQuote}${basePath}`,
+  )
   .replaceAll("http://localhost:3000/og.png", `${origin}${basePath}og.png`)
   .replaceAll(`${origin}/og.png`, `${origin}${basePath}og.png`);
+
+if (basePath !== "/" && html.includes(`${basePath}${basePath.slice(1)}`)) {
+  throw new Error(`The export prefixed some paths twice with ${basePath}.`);
+}
 
 await rm(output, { recursive: true, force: true });
 await mkdir(output, { recursive: true });
