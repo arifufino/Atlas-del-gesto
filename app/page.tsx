@@ -12,6 +12,53 @@ import {
 
 const seasonOptions = ["Todas", "1", "2", "3", "4", "5", "6"] as const;
 
+const SAVED_STORAGE_KEY = "atlas-gesto-saved";
+
+function readSavedIds(): string[] {
+  let stored: string | null;
+  try {
+    stored = window.localStorage.getItem(SAVED_STORAGE_KEY);
+  } catch (error) {
+    console.warn(
+      `No se pudo leer la colección guardada en "${SAVED_STORAGE_KEY}" desde localStorage.`,
+      error,
+    );
+    return [];
+  }
+  if (!stored) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(stored);
+  } catch (error) {
+    console.warn(
+      `La colección guardada en "${SAVED_STORAGE_KEY}" no es JSON válido; se ignora.`,
+      error,
+    );
+    return [];
+  }
+
+  if (!Array.isArray(parsed) || !parsed.every((id) => typeof id === "string")) {
+    console.warn(
+      `La colección guardada en "${SAVED_STORAGE_KEY}" no tiene el formato esperado (array de textos); se ignora.`,
+    );
+    return [];
+  }
+
+  return parsed;
+}
+
+function writeSavedIds(ids: string[]): void {
+  try {
+    window.localStorage.setItem(SAVED_STORAGE_KEY, JSON.stringify(ids));
+  } catch (error) {
+    console.warn(
+      `No se pudo guardar la colección en "${SAVED_STORAGE_KEY}" en localStorage.`,
+      error,
+    );
+  }
+}
+
 const stillExtensions: Record<string, string> = {
   "diana-mitford": "webp",
   "duke-shelby": "png",
@@ -244,13 +291,7 @@ export default function Home() {
   const [saved, setSaved] = useState<string[]>([]);
 
   useEffect(() => {
-    let storedIds: string[] = [];
-    try {
-      const stored = window.localStorage.getItem("atlas-gesto-saved");
-      if (stored) storedIds = JSON.parse(stored);
-    } catch {
-      storedIds = [];
-    }
+    const storedIds = readSavedIds();
     const timer = window.setTimeout(() => setSaved(storedIds), 0);
     return () => window.clearTimeout(timer);
   }, []);
@@ -260,7 +301,7 @@ export default function Home() {
       const next = current.includes(id)
         ? current.filter((savedId) => savedId !== id)
         : [...current, id];
-      window.localStorage.setItem("atlas-gesto-saved", JSON.stringify(next));
+      writeSavedIds(next);
       return next;
     });
   };

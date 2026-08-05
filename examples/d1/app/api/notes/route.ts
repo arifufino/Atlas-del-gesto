@@ -26,6 +26,7 @@ export async function GET() {
 
     return Response.json({ notes: rows });
   } catch (error) {
+    console.error("Failed to list notes", error);
     return Response.json(
       { error: toRouteErrorMessage(error) },
       { status: 500 }
@@ -50,6 +51,7 @@ export async function POST(request: Request) {
     const [note] = await db.insert(notes).values({ title, content }).returning();
     return Response.json({ note }, { status: 201 });
   } catch (error) {
+    console.error("Failed to create note", error);
     return Response.json(
       { error: toRouteErrorMessage(error) },
       { status: 500 }
