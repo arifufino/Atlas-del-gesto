@@ -247,7 +247,13 @@ export default function Home() {
     let storedIds: string[] = [];
     try {
       const stored = window.localStorage.getItem("atlas-gesto-saved");
-      if (stored) storedIds = JSON.parse(stored);
+      const parsed: unknown = stored ? JSON.parse(stored) : null;
+      if (Array.isArray(parsed)) {
+        const knownIds = new Set(profiles.map((profile) => profile.id));
+        storedIds = parsed.filter(
+          (id): id is string => typeof id === "string" && knownIds.has(id),
+        );
+      }
     } catch {
       storedIds = [];
     }
