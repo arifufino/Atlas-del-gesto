@@ -31,9 +31,11 @@ Comprobaciones de producción:
 
 ```bash
 npm run lint
-npm run build
-node --test tests/rendered-html.test.mjs
+npm test
 ```
+
+`npm test` compila el sitio y ejecuta la suite de `node --test`: pruebas
+unitarias de datos, autenticación y empaquetado, más el render del worker.
 
 ## Publicación
 
