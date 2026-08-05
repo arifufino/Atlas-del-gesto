@@ -1,25 +1,15 @@
 import { cp, mkdir, rm, writeFile } from "node:fs/promises";
+import { renderWithWorker } from "./render-worker.mjs";
 
 const output = new URL("../pages-dist/", import.meta.url);
 const client = new URL("../dist/client/", import.meta.url);
-const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-workerUrl.searchParams.set("pages-export", `${Date.now()}`);
 
 const basePath = (process.env.PAGES_BASE_PATH || "/").replace(/\/?$/, "/");
 const origin = (process.env.PAGES_ORIGIN || "https://pages-export.invalid").replace(/\/$/, "");
-const { default: worker } = await import(workerUrl.href);
 
-const response = await worker.fetch(
+const response = await renderWithWorker(
   new Request(`${origin}/`, { headers: { accept: "text/html", host: new URL(origin).host } }),
-  {
-    ASSETS: {
-      fetch: async () => new Response("Not found", { status: 404 }),
-    },
-  },
-  {
-    waitUntil() {},
-    passThroughOnException() {},
-  },
+  `pages-export-${Date.now()}`,
 );
 
 if (!response.ok) {
