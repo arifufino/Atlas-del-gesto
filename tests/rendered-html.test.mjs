@@ -1,24 +1,13 @@
 import assert from "node:assert/strict";
 import test from "node:test";
+import { renderWithWorker } from "../scripts/render-worker.mjs";
 
 async function render(path = "/") {
-  const workerUrl = new URL("../dist/server/index.js", import.meta.url);
-  workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
-  const { default: worker } = await import(workerUrl.href);
-
-  return worker.fetch(
+  return renderWithWorker(
     new Request(`https://atlas-del-gesto.example${path}`, {
       headers: { accept: "text/html" },
     }),
-    {
-      ASSETS: {
-        fetch: async () => new Response("Not found", { status: 404 }),
-      },
-    },
-    {
-      waitUntil() {},
-      passThroughOnException() {},
-    },
+    `test-${process.pid}-${Date.now()}`,
   );
 }
 

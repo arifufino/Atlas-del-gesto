@@ -1,140 +1,26 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useState } from "react";
+import { channels, profiles, sources, type CharacterProfile } from "./data";
 import {
-  channels,
-  profiles,
-  sources,
-  type CharacterProfile,
-  type Signal,
-} from "./data";
+  BrandLockup,
+  CharacterPortrait,
+  GesturePlate,
+  SeasonMarks,
+  SectionHeading,
+  StarGlyph,
+} from "./components";
+import {
+  classNames,
+  orderLabel,
+  profileMatchesQuery,
+  readSavedIds,
+  toggleId,
+  writeSavedIds,
+} from "./utils";
 
 const seasonOptions = ["Todas", "1", "2", "3", "4", "5", "6"] as const;
 
-const stillExtensions: Record<string, string> = {
-  "diana-mitford": "webp",
-  "duke-shelby": "png",
-};
-
-const wikiSlugs: Record<string, string> = {
-  "ada-shelby": "Ada_Thorne",
-  "chester-campbell": "Inspector_Campbell",
-  "grace-burgess": "Grace_Shelby",
-  "isaiah-jesus": "Isiah_Jesus",
-};
-
-const stillOverrides: Partial<
-  Record<string, Partial<Record<Signal["channel"], string>>>
-> = {
-  "thomas-shelby": {
-    Objeto: "./stills/thomas-smoking.jpg",
-    Movimiento: "./stills/thomas-walking.jpg",
-    Distancia: "./stills/shelby-family.jpg",
-  },
-  "arthur-shelby": {
-    Movimiento: "./stills/shelby-betting-shop.jpg",
-    Distancia: "./stills/family-meeting.jpg",
-  },
-  "john-shelby": {
-    Postura: "./stills/shelby-betting-shop.jpg",
-    Distancia: "./stills/family-meeting.jpg",
-  },
-  "polly-gray": { Distancia: "./stills/polly-ada.png" },
-  "ada-shelby": { Distancia: "./stills/polly-ada.png" },
-  "michael-gray": { Distancia: "./stills/family-meeting.jpg" },
-  "finn-shelby": { Distancia: "./stills/family-meeting.jpg" },
-  "grace-burgess": { Distancia: "./stills/thomas-grace.png" },
-  "lizzie-stark": { Distancia: "./stills/thomas-lizzie.png" },
-  "may-carleton": { Distancia: "./stills/thomas-may.jpg" },
-};
-
-function characterStill(profile: CharacterProfile) {
-  const extension = stillExtensions[profile.id] ?? "jpg";
-  return `./stills/${profile.id}.${extension}`;
-}
-
-function stillForSignal(profile: CharacterProfile, signal: Signal) {
-  return stillOverrides[profile.id]?.[signal.channel] ?? characterStill(profile);
-}
-
-function sourceForProfile(profile: CharacterProfile) {
-  const slug = wikiSlugs[profile.id] ?? profile.name.replaceAll(" ", "_");
-  return `https://peaky-blinders.fandom.com/wiki/${slug}`;
-}
-
-function SeasonMarks({ seasons }: { seasons: number[] }) {
-  return (
-    <span className="season-marks" aria-label={`Temporadas ${seasons.join(", ")}`}>
-      {[1, 2, 3, 4, 5, 6].map((season) => (
-        <span
-          key={season}
-          className={seasons.includes(season) ? "season-mark active" : "season-mark"}
-          title={`Temporada ${season}`}
-        >
-          {season}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function CharacterPortrait({
-  profile,
-  large = false,
-}: {
-  profile: CharacterProfile;
-  large?: boolean;
-}) {
-  return (
-    <div className={large ? "portrait real large" : "portrait real"}>
-      <img
-        src={characterStill(profile)}
-        alt={`Retrato de ${profile.name}`}
-        loading="lazy"
-        decoding="async"
-      />
-    </div>
-  );
-}
-
-function GesturePlate({
-  profile,
-  signal,
-  index,
-  compact = false,
-}: {
-  profile: CharacterProfile;
-  signal: Signal;
-  index: number;
-  compact?: boolean;
-}) {
-  const facialChannel = signal.channel === "Mirada" || signal.channel === "Rostro";
-
-  return (
-    <figure className={compact ? "gesture-visual compact" : "gesture-visual"}>
-      <div className="gesture-image">
-        <img
-          src={stillForSignal(profile, signal)}
-          alt={`${profile.name}: ${signal.title}. ${signal.observation}`}
-          loading="lazy"
-          decoding="async"
-          style={{ objectPosition: facialChannel ? "center 24%" : "center" }}
-        />
-        <span className="still-label">Fotograma de la serie</span>
-      </div>
-      <figcaption>
-        <span>{String(index + 1).padStart(2, "0")}</span>
-        <strong>{signal.title}</strong>
-        {!compact && (
-          <a href={sourceForProfile(profile)} target="_blank" rel="noreferrer">
-            Fuente visual ↗
-          </a>
-        )}
-      </figcaption>
-    </figure>
-  );
-}
 function ProfileDialog({
   profile,
   onClose,
@@ -198,7 +84,7 @@ function ProfileDialog({
           <div className="signal-list">
             {profile.signals.map((signal, index) => (
               <article className="signal-detail" key={signal.title}>
-                <div className="signal-number">{String(index + 1).padStart(2, "0")}</div>
+                <div className="signal-number">{orderLabel(index)}</div>
                 <GesturePlate profile={profile} signal={signal} index={index} />
                 <div>
                   <span className="signal-channel">{signal.channel}</span>
@@ -225,8 +111,11 @@ function ProfileDialog({
 
         <footer className="dialog-footer">
           <p>Interpreta el patrón completo, no un gesto aislado.</p>
-          <button className={saved ? "save-button saved" : "save-button"} onClick={onToggleSaved}>
-            <span aria-hidden="true">{saved ? "★" : "☆"}</span>
+          <button
+            className={classNames("save-button", saved && "saved")}
+            onClick={onToggleSaved}
+          >
+            <StarGlyph filled={saved} />
             {saved ? "Guardado" : "Guardar perfil"}
           </button>
         </footer>
@@ -244,23 +133,15 @@ export default function Home() {
   const [saved, setSaved] = useState<string[]>([]);
 
   useEffect(() => {
-    let storedIds: string[] = [];
-    try {
-      const stored = window.localStorage.getItem("atlas-gesto-saved");
-      if (stored) storedIds = JSON.parse(stored);
-    } catch {
-      storedIds = [];
-    }
+    const storedIds = readSavedIds();
     const timer = window.setTimeout(() => setSaved(storedIds), 0);
     return () => window.clearTimeout(timer);
   }, []);
 
   const toggleSaved = (id: string) => {
     setSaved((current) => {
-      const next = current.includes(id)
-        ? current.filter((savedId) => savedId !== id)
-        : [...current, id];
-      window.localStorage.setItem("atlas-gesto-saved", JSON.stringify(next));
+      const next = toggleId(current, id);
+      writeSavedIds(next);
       return next;
     });
   };
@@ -268,24 +149,7 @@ export default function Home() {
   const filtered = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase("es");
     return profiles.filter((profile) => {
-      const matchesQuery =
-        !normalized ||
-        [
-          profile.name,
-          profile.role,
-          profile.archetype,
-          profile.signature,
-          profile.evolution,
-          ...profile.signals.flatMap((signal) => [
-            signal.title,
-            signal.observation,
-            signal.function,
-            signal.context,
-          ]),
-        ]
-          .join(" ")
-          .toLocaleLowerCase("es")
-          .includes(normalized);
+      const matchesQuery = profileMatchesQuery(profile, normalized);
       const matchesChannel =
         channel === "Todos" || profile.signals.some((signal) => signal.channel === channel);
       const matchesSeason = season === "Todas" || profile.seasons.includes(Number(season));
@@ -310,8 +174,7 @@ export default function Home() {
     <main>
       <nav className="topbar" aria-label="Navegación principal">
         <a href="#inicio" className="brand" onClick={scrollToSection("inicio")}>
-          <span className="brand-mark">AG</span>
-          <span>Atlas del gesto</span>
+          <BrandLockup />
         </a>
         <div className="nav-links">
           <a href="#atlas" onClick={scrollToSection("atlas")}>Personajes</a>
@@ -319,7 +182,7 @@ export default function Home() {
           <a href="#fuentes" onClick={scrollToSection("fuentes")}>Fuentes</a>
         </div>
         <button className="saved-nav" onClick={() => setSavedOnly((value) => !value)}>
-          <span aria-hidden="true">{savedOnly ? "★" : "☆"}</span>
+          <StarGlyph filled={savedOnly} />
           Mi colección
           {saved.length > 0 && <b>{saved.length}</b>}
         </button>
@@ -403,16 +266,10 @@ export default function Home() {
       </section>
 
       <section className="atlas-section" id="atlas">
-        <header className="section-heading">
-          <div>
-            <span className="eyebrow">Archivo de personajes</span>
-            <h2>Firmas corporales</h2>
-          </div>
-          <p>
-            Cada perfil reúne un patrón dominante, su evolución y las señales que lo
-            componen.
-          </p>
-        </header>
+        <SectionHeading eyebrow="Archivo de personajes" title="Firmas corporales">
+          Cada perfil reúne un patrón dominante, su evolución y las señales que lo
+          componen.
+        </SectionHeading>
 
         <div className="filter-panel">
           <label className="search-box">
@@ -487,11 +344,9 @@ export default function Home() {
               return (
                 <article className="profile-card" key={profile.id}>
                   <div className="card-top">
-                    <span className="card-number">
-                      {String(index + 1).padStart(2, "0")}
-                    </span>
+                    <span className="card-number">{orderLabel(index)}</span>
                     <button
-                      className={isSaved ? "star-button saved" : "star-button"}
+                      className={classNames("star-button", isSaved && "saved")}
                       onClick={() => toggleSaved(profile.id)}
                       aria-label={
                         isSaved
@@ -499,7 +354,7 @@ export default function Home() {
                           : `Guardar ${profile.name}`
                       }
                     >
-                      {isSaved ? "★" : "☆"}
+                      <StarGlyph filled={isSaved} />
                     </button>
                   </div>
                   <div className="profile-identity">
@@ -592,16 +447,10 @@ export default function Home() {
       </section>
 
       <section className="sources-section" id="fuentes">
-        <header className="section-heading">
-          <div>
-            <span className="eyebrow">Base documental</span>
-            <h2>Fuentes consultadas</h2>
-          </div>
-          <p>
-            Guiones, notas de producción, entrevistas y literatura académica sostienen
-            la observación.
-          </p>
-        </header>
+        <SectionHeading eyebrow="Base documental" title="Fuentes consultadas">
+          Guiones, notas de producción, entrevistas y literatura académica sostienen la
+          observación.
+        </SectionHeading>
         <p className="image-credit-note">
           Los fotogramas pertenecen a BBC / Caryn Mandabach Productions y se muestran
           con fines de análisis editorial. El archivo visual fue consultado a través de
@@ -610,7 +459,7 @@ export default function Home() {
         <div className="source-list">
           {sources.map((source, index) => (
             <a href={source.url} target="_blank" rel="noreferrer" key={source.url}>
-              <span>{String(index + 1).padStart(2, "0")}</span>
+              <span>{orderLabel(index)}</span>
               <strong>{source.label}</strong>
               <em>{source.type}</em>
               <b aria-hidden="true">↗</b>
@@ -621,8 +470,7 @@ export default function Home() {
 
       <footer className="site-footer">
         <div className="brand">
-          <span className="brand-mark">AG</span>
-          <span>Atlas del gesto</span>
+          <BrandLockup />
         </div>
         <p>Un archivo independiente de análisis audiovisual y conducta no verbal.</p>
         <a href="#inicio" onClick={scrollToSection("inicio")}>Volver arriba ↑</a>
